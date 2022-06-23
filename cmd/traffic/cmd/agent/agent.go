@@ -20,6 +20,7 @@ import (
 	"github.com/telepresenceio/telepresence/v2/pkg/forwarder"
 	"github.com/telepresenceio/telepresence/v2/pkg/iputil"
 	"github.com/telepresenceio/telepresence/v2/pkg/restapi"
+	"github.com/telepresenceio/telepresence/v2/pkg/tracing"
 	"github.com/telepresenceio/telepresence/v2/pkg/tunnel"
 	"github.com/telepresenceio/telepresence/v2/pkg/version"
 )
@@ -140,6 +141,18 @@ func Main(ctx context.Context, args ...string) error {
 	g := dgroup.NewGroup(ctx, dgroup.GroupConfig{
 		EnableSignalHandling: true,
 	})
+
+	if port, ok := tracing.TracingPort(ctx); ok {
+		tracer, err := tracing.NewTraceServer(ctx, port, tracing.TraceConfig{
+			ProcessID:   2,
+			ProcessName: "traffic-agent",
+		})
+		if err != nil {
+			return err
+		}
+		g.Go("tracer", tracer.Run)
+		defer tracer.Shutdown(ctx)
+	}
 
 	sftpPortCh := make(chan uint16)
 	if config.HasMounts(ctx) {

@@ -53,6 +53,10 @@ spec:
             value: {{ .Values.systemaPort | quote }}
           - name: TELEPRESENCE_REGISTRY
             value: {{ .Values.agentInjector.agentImage.registry }}
+          {{- with .Values.tracing }}
+          - name: TELEPRESENCE_GRPC_TRACE_PORT
+            value: "{{ .grpcPort }}"
+          {{- end }}
           {{- with .Values.telepresenceAPI }}
           {{- if .port }}
           - name: TELEPRESENCE_API_PORT
@@ -94,6 +98,10 @@ spec:
             containerPort: 8081
           - name: https
             containerPort: 8443
+        {{- with .Values.tracing }}
+          - name: grpc-trace
+            containerPort: {{ .grpcPort }}
+          {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
