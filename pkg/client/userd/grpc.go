@@ -490,21 +490,26 @@ func (s *service) RunCommand(ctx context.Context, req *rpc.RunCommandRequest) (r
 		cmd.SetOut(outW)
 		cmd.SetErr(errW)
 
-		if _, ok := cmd.Annotations[commands.CommandRequiresConnectorServer]; ok {
-			ctx = commands.WithConnectorServer(ctx, s)
+		err = cmd.ParseFlags(args)
+		if err != nil {
+			return
 		}
 
 		if _, ok := cmd.Annotations[commands.CommandRequiresSession]; ok {
-			err = s.withSession(ctx, "cmd-"+cmd.Name(), func(ctx context.Context, s trafficmgr.Session) error {
-				ctx = commands.WithSession(ctx, s)
+			err = s.withSession(ctx, "cmd-"+cmd.Name(), func(cctx context.Context, ts trafficmgr.Session) error {
+				ctx = commands.WithSession(cctx, ts)
 				return nil
 			})
 			if err != nil {
 				return
 			}
 		}
+		if _, ok := cmd.Annotations[commands.CommandRequiresConnectorServer]; ok {
+			ctx = commands.WithConnectorServer(ctx, s)
+		}
 
-		if err = cmd.ExecuteContext(ctx); err != nil {
+		err = cmd.ExecuteContext(ctx)
+		if err != nil {
 			return
 		}
 
