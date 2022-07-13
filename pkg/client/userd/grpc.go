@@ -468,7 +468,7 @@ func (s *service) Quit(ctx context.Context, _ *empty.Empty) (*empty.Empty, error
 
 func (s *service) ListCommands(ctx context.Context, _ *empty.Empty) (groups *rpc.CommandGroups, err error) {
 	s.logCall(ctx, "ListCommands", func(ctx context.Context) {
-		groups, err = cliutil.CommandsToRPC(s.getCommands()), nil
+		groups, err = cliutil.CommandsToRPC(s.getCommands(ctx)), nil
 	})
 	return
 }
@@ -478,7 +478,7 @@ func (s *service) RunCommand(ctx context.Context, req *rpc.RunCommandRequest) (r
 		cmd := &cobra.Command{
 			Use: "fauxmand",
 		}
-		cli.AddCommandGroups(cmd, s.getCommands())
+		cli.AddCommandGroups(cmd, s.getCommands(ctx))
 		args := req.GetOsArgs()
 		cmd.SetArgs(args)
 		cmd, args, err = cmd.Find(args)
@@ -490,16 +490,24 @@ func (s *service) RunCommand(ctx context.Context, req *rpc.RunCommandRequest) (r
 		cmd.SetOut(outW)
 		cmd.SetErr(errW)
 
+		if _, ok := cmd.Annotations[commands.CommandRequiresConnectorServer]; ok {
+			ctx = commands.WithConnectorServer(ctx, s)
+		}
+
 		if _, ok := cmd.Annotations[commands.CommandRequiresSession]; ok {
 			err = s.withSession(ctx, "cmd-"+cmd.Name(), func(ctx context.Context, s trafficmgr.Session) error {
-				return cmd.ExecuteContext(ctx)
+				ctx = commands.WithSession(ctx, s)
+				return nil
 			})
-		} else {
-			err = cmd.ExecuteContext(ctx)
+			if err != nil {
+				return
+			}
 		}
-		if err != nil {
+
+		if err = cmd.ExecuteContext(ctx); err != nil {
 			return
 		}
+
 		result = &rpc.RunCommandResponse{
 			Stdout: outW.Bytes(),
 			Stderr: errW.Bytes(),
