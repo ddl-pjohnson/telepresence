@@ -25,6 +25,8 @@ spec:
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     spec:
+      serviceAccount: traffic-manager
+      serviceAccountName: traffic-manager
       securityContext:
         {{- toYaml .Values.hooks.podSecurityContext | nindent 8 }}
       restartPolicy: Never
