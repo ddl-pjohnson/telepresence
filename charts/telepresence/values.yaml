@@ -296,3 +296,14 @@ hooks:
     registry: docker.io
     image: "curlimages/curl"
     tag: latest
+
+# Additional rules for the traffic-manager service account e.g. pod security policies.
+additionalRules: []
+  # - apiGroups:
+  #   - policy
+  #   resourceNames:
+  #   - admin
+  #   resources:
+  #   - podsecuritypolicies
+  #   verbs:
+  #   - use
